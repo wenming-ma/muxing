@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  muxing:
+    image: weishaw/sub2api:latest
+    container_name: sub2api_core
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - TZ=Asia/Shanghai
+      - GIN_MODE=release
+      - SUB2API_ENV=production
+      - SERVER_PORT=8080
+      - SERVER_HOST=0.0.0.0
+      - SERVER_HTTPS=false
+
+      # ========================
+      # 1. Neon 数据库配置
+      # ========================
+      - DATABASE_HOST=ep-wild-glitter-akm9jigw.c-3.us-west-2.aws.neon.tech
+      - DATABASE_PORT=5432
+      - DATABASE_USER=neondb_owner
+      - DATABASE_PASSWORD=npg_qLmUo3ngeC6S
+      - DATABASE_DBNAME=neondb
+      - DATABASE_SSL_MODE=require
+
+      # 数据库连接池配置（修复 prepared statement 问题）
+      - DATABASE_MAX_OPEN_CONNS=5
+      - DATABASE_MAX_IDLE_CONNS=2
+      - DATABASE_CONN_MAX_LIFETIME=300s
+
+      # ========================
+      # 2. 本地 Redis 配置
+      # ========================
+      - REDIS_HOST=127.0.0.1
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_USE_TLS=false
+
+      # ========================
+      # 3. WARP SOCKS5 代理配置
+      # ========================
+      - HTTP_PROXY=socks5h://127.0.0.1:40000
+      - HTTPS_PROXY=socks5h://127.0.0.1:40000
+      - ALL_PROXY=socks5h://127.0.0.1:40000
+      - NO_PROXY=localhost,127.0.0.1,::1,ep-wild-glitter-akm9jigw.c-3.us-west-2.aws.neon.tech,.neon.tech
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared_tunnel
+    restart: always
+    network_mode: "host"
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=eyJhIjoiOGZlNTYyMzQwNGVlYTgxNzg4Njc2ZjdjNzhiNTVjMTkiLCJ0IjoiMTFlYjRjYmUtM2YxMi00MjllLThiNjktZDIyMzY2MDU1OGMyIiwicyI6IllXTXpNV1ppWkRZdE9USXlZeTAwWWprd0xUbGpOVFl0WWpRNFkyTmxaakl4WVRjNSJ9
+    depends_on:
+      - muxing
